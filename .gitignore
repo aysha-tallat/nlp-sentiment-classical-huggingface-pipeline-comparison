@@ -1,0 +1,37 @@
+# python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+
+# env
+.env
+*.env
+conda-env/
+
+# jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# huggingface cache
+.cache/
+~/.cache/huggingface/
+
+# datasets cache
+~/.cache/huggingface/datasets/
+
+# model weights (large files — use HF hub or Azure ML registry instead)
+*.bin
+*.safetensors
+*.pt
+*.pth
+*.onnx
+
+# logs & mlflow
+mlruns/
+*.log
+
+# os
+.DS_Store
+Thumbs.db
