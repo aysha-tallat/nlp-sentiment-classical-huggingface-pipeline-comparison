@@ -35,3 +35,7 @@ mlruns/
 # os
 .DS_Store
 Thumbs.db
+
+
+#flask app
+instance/

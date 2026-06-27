@@ -200,4 +200,7 @@ python3 sentiment_classical.py
 
 # transformer pipeline
 python3 sentiment_hf.py
+
+#to see them working run flask app
+python3 app.py
 ```

@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Aysha' Sentiment Analyzer</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0f1117;
+      --surface:   #181c27;
+      --border:    #2a2f3e;
+      --pos:       #22d3a5;
+      --neg:       #f05c5c;
+      --accent:    #7b8cff;
+      --muted:     #6b7280;
+      --text:      #e8eaf0;
+      --mono:      'IBM Plex Mono', monospace;
+      --sans:      'IBM Plex Sans', sans-serif;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 48px 16px 80px;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+
+    header .eyebrow {
+      font-family: var(--mono);
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      color: var(--accent);
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+
+    header h1 {
+      font-size: clamp(24px, 4vw, 36px);
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+    }
+
+    header p {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      width: 100%;
+      max-width: 680px;
+    }
+
+    textarea {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: 14px;
+      line-height: 1.6;
+      padding: 14px;
+      resize: vertical;
+      min-height: 110px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    textarea:focus { border-color: var(--accent); }
+    textarea::placeholder { color: var(--muted); }
+
+    button {
+      margin-top: 14px;
+      width: 100%;
+      padding: 13px;
+      background: var(--accent);
+      color: #fff;
+      font-family: var(--mono);
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+
+    button:hover  { opacity: 0.85; }
+    button:active { opacity: 0.7; }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* results grid */
+    #results {
+      display: none;
+      width: 100%;
+      max-width: 680px;
+      margin-top: 24px;
+      display: none;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    #results.visible { display: flex; }
+
+    .result-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 22px;
+    }
+
+    .result-card .pipeline-label {
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 14px;
+    }
+
+    .verdict {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 18px;
+    }
+
+    .verdict .badge {
+      font-family: var(--mono);
+      font-size: 13px;
+      font-weight: 600;
+      padding: 5px 14px;
+      border-radius: 6px;
+      letter-spacing: 0.06em;
+    }
+
+    .badge.pos { background: rgba(34,211,165,0.12); color: var(--pos); }
+    .badge.neg { background: rgba(240, 92, 92,0.12); color: var(--neg); }
+
+    .confidence-bar {
+      flex: 1;
+    }
+
+    .confidence-bar .label {
+      font-size: 11px;
+      color: var(--muted);
+      margin-bottom: 5px;
+      font-family: var(--mono);
+    }
+
+    .bar-track {
+      height: 5px;
+      background: var(--border);
+      border-radius: 99px;
+      overflow: hidden;
+    }
+
+    .bar-fill {
+      height: 100%;
+      border-radius: 99px;
+      transition: width 0.6s cubic-bezier(0.4,0,0.2,1);
+    }
+
+    .bar-fill.pos { background: var(--pos); }
+    .bar-fill.neg { background: var(--neg); }
+
+    /* analysis section */
+    .analysis-label {
+      font-size: 11px;
+      font-family: var(--mono);
+      color: var(--muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+
+    /* word chips */
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .chip {
+      font-family: var(--mono);
+      font-size: 12px;
+      padding: 4px 10px;
+      border-radius: 5px;
+      border: 1px solid var(--border);
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .chip .chip-score {
+      font-size: 10px;
+      opacity: 0.65;
+    }
+
+    .chip.strong-pos  { border-color: rgba(34,211,165,0.4); color: var(--pos); }
+    .chip.weak-pos    { border-color: rgba(34,211,165,0.2); color: #9ee8d4; }
+    .chip.strong-neg  { border-color: rgba(240,92,92,0.4);  color: var(--neg); }
+    .chip.weak-neg    { border-color: rgba(240,92,92,0.2);  color: #f0a0a0; }
+
+    .divider {
+      height: 1px;
+      background: var(--border);
+      margin: 16px 0;
+    }
+
+    /* explanation prose */
+    .explanation {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .explanation strong { color: var(--text); font-weight: 500; }
+
+    /* error */
+    #error {
+      display: none;
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--neg);
+      margin-top: 10px;
+      text-align: center;
+    }
+
+    /* spinner */
+    .spinner {
+      display: inline-block;
+      width: 13px; height: 13px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+      margin-right: 8px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="eyebrow">Aysha' NLP · Sentiment Analysis</div>
+  <h1>Classical ML vs Transformer</h1>
+  <p>IMDb pipeline comparison — TF-IDF + Logistic Regression vs DistilBERT</p>
+</header>
+
+<div class="card">
+  <textarea id="input" placeholder="Paste a movie review or any text…"></textarea>
+  <button id="btn" onclick="analyze()">Analyze sentiment</button>
+  <div id="error"></div>
+</div>
+
+<div id="results">
+
+  <!-- Classical -->
+  <div class="result-card" id="card-classical">
+    <div class="pipeline-label">Pipeline 01 — Classical ML</div>
+    <div class="verdict">
+      <span class="badge" id="c-badge">—</span>
+      <div class="confidence-bar">
+        <div class="label">Confidence: <span id="c-conf">—</span>%</div>
+        <div class="bar-track"><div class="bar-fill" id="c-bar" style="width:0%"></div></div>
+      </div>
+    </div>
+    <div class="analysis-label">Words that drove this prediction</div>
+    <div class="chips" id="c-chips"></div>
+    <div class="divider"></div>
+    <div class="explanation" id="c-explanation"></div>
+  </div>
+
+  <!-- HuggingFace -->
+  <div class="result-card" id="card-hf">
+    <div class="pipeline-label">Pipeline 02 — DistilBERT (HuggingFace)</div>
+    <div class="verdict">
+      <span class="badge" id="h-badge">—</span>
+      <div class="confidence-bar">
+        <div class="label">Confidence: <span id="h-conf">—</span>%</div>
+        <div class="bar-track"><div class="bar-fill" id="h-bar" style="width:0%"></div></div>
+      </div>
+    </div>
+    <div class="analysis-label">Key tokens in your input</div>
+    <div class="chips" id="h-chips"></div>
+    <div class="divider"></div>
+    <div class="explanation" id="h-explanation"></div>
+  </div>
+
+</div>
+
+<script>
+  const API = "http://localhost:5000/predict";
+
+  async function analyze() {
+    const text = document.getElementById("input").value.trim();
+    const btn  = document.getElementById("btn");
+    const err  = document.getElementById("error");
+
+    if (!text) { showError("Please enter some text first."); return; }
+
+    err.style.display = "none";
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>Analyzing…';
+    document.getElementById("results").classList.remove("visible");
+
+    try {
+      const res  = await fetch(API, {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ text }),
+      });
+
+      if (!res.ok) throw new Error(`Server error ${res.status}`);
+      const data = await res.json();
+
+      renderClassical(data.classical);
+      renderHF(data.hf);
+      document.getElementById("results").classList.add("visible");
+
+    } catch (e) {
+      showError("Could not reach the API. Is app.py running on port 5000?");
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "Analyze sentiment";
+    }
+  }
+
+  function renderClassical(d) {
+    const isPos = d.label === "POSITIVE";
+    const cls   = isPos ? "pos" : "neg";
+
+    setVerdict("c-badge", "c-conf", "c-bar", d.label, d.confidence, cls);
+
+    // word chips — color by coef sign and magnitude
+    const chips = document.getElementById("c-chips");
+    chips.innerHTML = "";
+    d.top_words.forEach(w => {
+      const chipCls = w.score > 0.8 ? "strong-pos"
+                    : w.score > 0   ? "weak-pos"
+                    : w.score < -0.8 ? "strong-neg"
+                    : "weak-neg";
+      chips.innerHTML += `
+        <span class="chip ${chipCls}">
+          ${w.word}
+          <span class="chip-score">${w.score > 0 ? "+" : ""}${w.score.toFixed(2)}</span>
+        </span>`;
+    });
+
+    // explanation
+    const topWord   = d.top_words[0];
+    const direction = topWord?.score > 0 ? "positive" : "negative";
+    const posWords  = d.top_words.filter(w => w.score > 0).map(w => `<strong>${w.word}</strong>`).join(", ");
+    const negWords  = d.top_words.filter(w => w.score < 0).map(w => `<strong>${w.word}</strong>`).join(", ");
+
+    let expl = `TF-IDF turned your text into a bag of weighted words. `;
+    if (posWords) expl += `Words like ${posWords} carry positive weight in the logistic regression model. `;
+    if (negWords) expl += `Words like ${negWords} carry negative weight. `;
+    expl += `The sum of all word weights pushed the prediction toward <strong>${d.label}</strong> with ${d.confidence}% confidence. 
+    Note: this model has no concept of word order — <em>"not good"</em> and <em>"good not"</em> would score identically.`;
+
+    document.getElementById("c-explanation").innerHTML = expl;
+  }
+
+  function renderHF(d) {
+    const isPos = d.label === "POSITIVE";
+    const cls   = isPos ? "pos" : "neg";
+
+    setVerdict("h-badge", "h-conf", "h-bar", d.label, d.confidence, cls);
+
+    // token chips — neutral color, just showing meaningful tokens
+    const chips = document.getElementById("h-chips");
+    chips.innerHTML = "";
+    d.tokens.forEach(t => {
+      chips.innerHTML += `<span class="chip">${t}</span>`;
+    });
+
+    // explanation
+    let expl = `DistilBERT read your text as a full sequence, not as isolated words. 
+    Its self-attention layers let every token look at every other token — so <em>"not good"</em> is understood as negative, 
+    unlike the classical model. `;
+
+    if (d.confidence > 90) {
+      expl += `The ${d.confidence}% confidence score means the model's output logits were very far apart — it is certain about this prediction.`;
+    } else {
+      expl += `The ${d.confidence}% confidence score suggests the text has mixed signals — some positive and some negative language.`;
+    }
+
+    expl += ` No retraining was needed: DistilBERT arrived pre-trained on millions of documents and already understood sentiment before seeing your input.`;
+
+    document.getElementById("h-explanation").innerHTML = expl;
+  }
+
+  function setVerdict(badgeId, confId, barId, label, conf, cls) {
+    const badge = document.getElementById(badgeId);
+    badge.textContent = label;
+    badge.className   = `badge ${cls}`;
+
+    document.getElementById(confId).textContent = conf;
+
+    const bar = document.getElementById(barId);
+    bar.className = `bar-fill ${cls}`;
+    // trigger reflow for animation
+    bar.style.width = "0%";
+    requestAnimationFrame(() => { bar.style.width = conf + "%"; });
+  }
+
+  function showError(msg) {
+    const err = document.getElementById("error");
+    err.textContent = msg;
+    err.style.display = "block";
+  }
+
+  // allow Enter + Ctrl/Cmd to submit
+  document.getElementById("input").addEventListener("keydown", e => {
+    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) analyze();
+  });
+</script>
+</body>
+</html>
